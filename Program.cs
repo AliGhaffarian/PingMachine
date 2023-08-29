@@ -1,4 +1,8 @@
 ﻿using System;
+using System.IO;
+using System.Text.Json;
+using System.Threading;
+using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Net;
 
@@ -9,7 +13,6 @@ namespace Program.cs
 
     public class Program
     {
-
         class SourceFailures
         {
             static public void ServerFileNotFound()
@@ -19,12 +22,12 @@ namespace Program.cs
                 Environment.Exit(-1);
             }
 
-            static public void StabilityTest()
+            static public void StabilityTest(string serversPath)
             {
-                StreamReader? reader;
+                StreamReader reader;
                 try
                 {
-                    reader = new StreamReader(SourceConfigs.fileName);
+                    reader = new StreamReader(serversPath);
                 }
 
                 catch(System.IO.FileNotFoundException)
@@ -33,27 +36,21 @@ namespace Program.cs
                 }
             }
         }
-        public struct SourceConfigs
-        {
-            static public string fileName = "servers.txt";
-            static public  int PINGTIMES = 10;
-            static public  int DELAY = 1000;
-        }
-        public struct SourceAtt
+        public class SourceAtt
         {
            static public bool firstCycle = true;
         }
 
-        public struct PingData
+        public class PingData
         {
-            public List<int>? tripTimeList;
+            public List<int> tripTimeList = new List<int>();
             public string serverAdress = "NoAdress";
             public string serverName = "NoName";
             public void Print()
             {
                 Console.WriteLine(serverAdress);
 
-                if(tripTimeList == null)
+                if(tripTimeList.Count == 0)
                 {
                     Console.WriteLine("Failed");
                     return;
@@ -62,9 +59,9 @@ namespace Program.cs
                 for(int i = 0; i < tripTimeList.Count; i++)
                     Console.WriteLine(tripTimeList[i]);
             }
-            public int FailedTripCount()
+            public int FailedTripCount(int pingTimes)
             {
-                return SourceConfigs.PINGTIMES - ((tripTimeList == null) ? SourceConfigs.PINGTIMES : tripTimeList.Count) ;
+                return pingTimes - ((tripTimeList == null) ? pingTimes : tripTimeList.Count) ;
             }
         }
 
@@ -86,14 +83,14 @@ namespace Program.cs
 
             return Convert.ToInt32((pingReply.RoundtripTime));
         }
-        static public List<int> PingSingleServer (string server)
+        static public List<int> PingSingleServer (string server, int pingTimes)
         {
             List<int> tripTimeList = new List<int>();
             Ping ping = new Ping();
 
             int? currentPingTripTime;
             
-            for (int i = 0; i < SourceConfigs.PINGTIMES; i++)
+            for (int i = 0; i < pingTimes; i++)
             {
                 currentPingTripTime = Pinger(server);
 
@@ -106,16 +103,16 @@ namespace Program.cs
 
             return tripTimeList;
         }
-        static public List<PingData> PingMultipleServers ()
+        static public List<PingData> PingMultipleServers(string serversPath, int pingTimes)
         {
             Ping ping = new Ping();
             List<PingData> pingDataList = new List<PingData>();
-            string line;
+            string? line;
             StreamReader reader;
 
-            List<int>? currentTripTimes;
+            List<int> currentTripTimes;
 
-            reader = new StreamReader(SourceConfigs.fileName);
+            reader = new StreamReader(serversPath);
 
 
             while ((line = reader.ReadLine()) != null)
@@ -123,10 +120,11 @@ namespace Program.cs
                 string dnsServer = line;
 
                 if (SourceAtt.firstCycle == true)
-                    Console.WriteLine("Pingings " + dnsServer);
+                    Console.WriteLine("Pinging " + dnsServer);
 
-                currentTripTimes = new List<int>(PingSingleServer(dnsServer));
+                currentTripTimes = new List<int>(PingSingleServer(dnsServer, pingTimes));
 
+                Console.WriteLine(dnsServer);
                 pingDataList.Add(new PingData
                 {
                     tripTimeList = currentTripTimes,
@@ -151,7 +149,7 @@ namespace Program.cs
             return sum/ints.Count != 0 ? ints.Count : 1;
         }
 
-        public static void PrintResultOfMultiplePing(List<PingData> pingDataList)
+        public static void PrintResultOfMultiplePing(List<PingData> pingDataList, int pingTimes)
         {
             Console.WriteLine("Average trip time to servers : ");
             for(int i = 0;i < pingDataList.Count;i++)
@@ -162,7 +160,7 @@ namespace Program.cs
                 Console.Write(pingDataList[i].serverAdress + " : ");
                 Console.Write(pingDataList[i].tripTimeList == null? "failed to ping" : Average(pingDataList[i].tripTimeList) + "ms.");
 
-                resultOfFailedTripCount = pingDataList[i].FailedTripCount();
+                resultOfFailedTripCount = pingDataList[i].FailedTripCount(pingTimes);
 
                 if(resultOfFailedTripCount != 0)
                     Console.Write("(" + resultOfFailedTripCount + " failed ping attemps" + ")");
@@ -171,27 +169,42 @@ namespace Program.cs
             }
         }
 
+        public struct Config {
+            public string serversPath;
+            public int pingTimes;
+            public int delay; 
+        }
+
+        public static Config ParseConfig(string path) {
+            var text = File.ReadAllText("./config.json");
+            var configJSON = JsonDocument.Parse(text).RootElement;
+            
+            Config result = new Config();
+
+            result.serversPath = configJSON.GetProperty("serverList").ToString();
+            result.pingTimes = Int32.Parse(configJSON.GetProperty("pingTimes").ToString());
+            result.delay = Int32.Parse(configJSON.GetProperty("delay").ToString());
+
+            return result;
+        }
+
         public static void Main()
         {
-            SourceFailures.StabilityTest();
+            var config = ParseConfig("./config.json");
+            SourceFailures.StabilityTest(config.serversPath);
 
             Ping ping = new Ping();
-            
             List <PingData> PingDataList = new List<PingData>();
-
-
-           
 
             while (true)
             {
-
-                PingDataList = new List<PingData>(PingMultipleServers());
+                PingDataList = new List<PingData>(PingMultipleServers(config.serversPath, config.pingTimes));
 
                 Console.Clear();
 
-                PrintResultOfMultiplePing(PingDataList);
+                PrintResultOfMultiplePing(PingDataList, config.pingTimes);
                 
-                Thread.Sleep(SourceConfigs.DELAY);
+                Thread.Sleep(config.delay);
                 SourceAtt.firstCycle = false;
             }
         }

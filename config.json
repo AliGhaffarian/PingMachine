@@ -1,0 +1,5 @@
+{
+    "serverList": "servers.txt", 
+    "pingTimes": "10", 
+    "delay": "1000"
+}
