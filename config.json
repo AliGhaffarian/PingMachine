@@ -1,5 +1,8 @@
 {
-    "serverList": "servers.txt", 
+    "servers": [
+        "8.8.8.8", 
+        "spotify.com"
+    ], 
     "pingTimes": "10", 
     "delay": "1000"
 }
