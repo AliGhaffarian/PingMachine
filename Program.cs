@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -25,13 +25,13 @@ namespace Program.cs
 
             static public void StabilityTest(List<string> servers)
             {
-                if(servers.Count == 0) 
-                    ServersListEmpty(); 
+                if (servers.Count == 0)
+                    ServersListEmpty();
             }
         }
         public class SourceAtt
         {
-           static public bool firstCycle = true;
+            static public bool firstCycle = true;
         }
 
         public class PingData
@@ -43,18 +43,18 @@ namespace Program.cs
             {
                 Console.WriteLine(serverAdress);
 
-                if(tripTimeList.Count == 0)
+                if (tripTimeList.Count == 0)
                 {
                     Console.WriteLine("Failed");
                     return;
                 }
 
-                for(int i = 0; i < tripTimeList.Count; i++)
+                for (int i = 0; i < tripTimeList.Count; i++)
                     Console.WriteLine(tripTimeList[i]);
             }
             public int FailedTripCount(int pingTimes)
             {
-                return pingTimes - ((tripTimeList == null) ? pingTimes : tripTimeList.Count) ;
+                return pingTimes - ((tripTimeList == null) ? pingTimes : tripTimeList.Count);
             }
         }
 
@@ -65,7 +65,7 @@ namespace Program.cs
             return lineCount;
         }
 
-        static public int? Pinger (string server)
+        static public int? Pinger(string server)
         {
             Ping ping = new Ping();
             PingReply pingReply;
@@ -76,13 +76,13 @@ namespace Program.cs
 
             return Convert.ToInt32((pingReply.RoundtripTime));
         }
-        static public List<int> PingSingleServer (string server, int pingTimes)
+        static public List<int> PingSingleServer(string server, int pingTimes)
         {
             List<int> tripTimeList = new List<int>();
             Ping ping = new Ping();
 
             int? currentPingTripTime;
-            
+
             for (int i = 0; i < pingTimes; i++)
             {
                 currentPingTripTime = Pinger(server);
@@ -104,7 +104,7 @@ namespace Program.cs
 
             List<int> currentTripTimes;
 
-            for(int i = 0; i < servers.Count; i++)
+            for (int i = 0; i < servers.Count; i++)
             {
                 server = servers[i];
                 string dnsServer = server;
@@ -133,53 +133,56 @@ namespace Program.cs
         {
             int sum = 0;
 
-            for(int i = 0; i<ints.Count; i++)
-                sum+= ints[i];
-            
-            return sum/ints.Count != 0 ? ints.Count : 1;
+            for (int i = 0; i < ints.Count; i++)
+                sum += ints[i];
+
+            return (sum / (ints.Count != 0 ? ints.Count : 1));
         }
 
         public static void PrintResultOfMultiplePing(List<PingData> pingDataList, int pingTimes)
         {
             Console.WriteLine("Average trip time to servers : ");
-            for(int i = 0;i < pingDataList.Count;i++)
+            for (int i = 0; i < pingDataList.Count; i++)
             {
                 int resultOfFailedTripCount;
-                
-               
+
+
                 Console.Write(pingDataList[i].serverAdress + " : ");
-                Console.Write(pingDataList[i].tripTimeList == null? "failed to ping" : Average(pingDataList[i].tripTimeList) + "ms.");
+                Console.Write(pingDataList[i].tripTimeList == null ? "failed to ping" : Average(pingDataList[i].tripTimeList) + "ms.");
 
                 resultOfFailedTripCount = pingDataList[i].FailedTripCount(pingTimes);
 
-                if(resultOfFailedTripCount != 0)
+                if (resultOfFailedTripCount != 0)
                     Console.Write("(" + resultOfFailedTripCount + " failed ping attemps" + ")");
 
-                Console.WriteLine();    
+                Console.WriteLine();
             }
         }
 
-        public struct Config {
-            public Config() {
-                servers = new List<string>(); 
+        public struct Config
+        {
+            public Config()
+            {
+                servers = new List<string>();
             }
             public List<string> servers;
-            public int pingTimes;
-            public int delay; 
+            public int pingTimes = 0;
+            public int delay = 0;
         }
 
-        public static Config ParseConfig(string path) {
+        public static Config ParseConfig(string path)
+        {
             var text = File.ReadAllText("./config.json");
             var configJSON = JsonNode.Parse(text);
-            
+
             Config result = new Config();
-            if(configJSON == null) 
-                return result; 
+            if (configJSON == null)
+                return result;
 
             var serversProperty = configJSON["servers"];
-            result.servers = new List<string>(); 
-            for(int i = 0; i < serversProperty!.AsArray().Count(); i++) 
-                result.servers.Add(serversProperty[i]!.ToString()); 
+            result.servers = new List<string>();
+            for (int i = 0; i < serversProperty!.AsArray().Count(); i++)
+                result.servers.Add(serversProperty[i]!.ToString());
             result.pingTimes = Int32.Parse(configJSON["pingTimes"]!.ToString());
             result.delay = Int32.Parse(configJSON["delay"]!.ToString());
 
@@ -192,7 +195,7 @@ namespace Program.cs
             SourceFailures.StabilityTest(config.servers);
 
             Ping ping = new Ping();
-            List <PingData> PingDataList = new List<PingData>();
+            List<PingData> PingDataList = new List<PingData>();
 
             while (true)
             {
@@ -201,7 +204,7 @@ namespace Program.cs
                 Console.Clear();
 
                 PrintResultOfMultiplePing(PingDataList, config.pingTimes);
-                
+
                 Thread.Sleep(config.delay);
                 SourceAtt.firstCycle = false;
             }
