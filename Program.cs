@@ -114,7 +114,6 @@ namespace Program.cs
 
                 currentTripTimes = new List<int>(PingSingleServer(dnsServer, pingTimes));
 
-                Console.WriteLine(dnsServer);
                 pingDataList.Add(new PingData
                 {
                     tripTimeList = currentTripTimes,
